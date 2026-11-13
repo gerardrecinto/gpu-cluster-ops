@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gerardrecinto.github.io/gpu-cluster-ops/sitemap.xml
