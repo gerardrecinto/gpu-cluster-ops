@@ -1,0 +1,6 @@
+apiVersion: v2
+name: llm-serve
+description: Serve an LLM on GPU nodes with vLLM (default) or TGI
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

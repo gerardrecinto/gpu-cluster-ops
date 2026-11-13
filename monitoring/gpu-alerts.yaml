@@ -1,0 +1,39 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gpu-alerts
+spec:
+  groups:
+    - name: gpu
+      rules:
+        - alert: GpuXidError
+          expr: increase(DCGM_FI_DEV_XID_ERRORS[5m]) > 0
+          labels: { severity: page }
+          annotations:
+            summary: "XID error on {{ $labels.Hostname }} GPU {{ $labels.gpu }}, drain the node"
+        - alert: GpuHot
+          expr: DCGM_FI_DEV_GPU_TEMP > 85
+          for: 5m
+          labels: { severity: ticket }
+          annotations:
+            summary: "GPU {{ $labels.gpu }} on {{ $labels.Hostname }} is over 85C"
+        - alert: GpuMemoryNearFull
+          expr: DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.97
+          for: 10m
+          labels: { severity: ticket }
+          annotations:
+            summary: "GPU {{ $labels.gpu }} memory over 97 percent, reduce max sequences"
+        - alert: GpuIdleWhileRequested
+          expr: avg_over_time(DCGM_FI_DEV_GPU_UTIL[30m]) < 5
+          for: 30m
+          labels: { severity: ticket }
+          annotations:
+            summary: "GPU {{ $labels.gpu }} on {{ $labels.Hostname }} is idle but allocated"
+    - name: inference
+      rules:
+        - alert: VllmQueueBacklog
+          expr: vllm:num_requests_waiting > 20
+          for: 5m
+          labels: { severity: page }
+          annotations:
+            summary: "vLLM queue is {{ $value }} deep, add replicas or reduce load"

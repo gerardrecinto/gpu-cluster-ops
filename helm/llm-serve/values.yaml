@@ -1,0 +1,20 @@
+engine: vllm            # vllm or tgi
+model: meta-llama/Llama-3.1-8B-Instruct
+image:
+  vllm: vllm/vllm-openai:v0.11.0
+  tgi: ghcr.io/huggingface/text-generation-inference:3.3.4
+replicaCount: 1
+gpusPerPod: 1           # tensor parallel size equals this
+# Name of an existing Secret with the key HF_TOKEN. The chart never stores a token.
+hfTokenSecret: hf-token
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+modelCache:
+  size: 100Gi
+  storageClass: ""
+pdb:
+  minAvailable: 1

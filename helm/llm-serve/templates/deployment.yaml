@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: { app: {{ .Release.Name }} }
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate   # a rolling update would need a second set of GPUs
+  selector:
+    matchLabels: { app: {{ .Release.Name }} }
+  template:
+    metadata:
+      labels: { app: {{ .Release.Name }} }
+    spec:
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      containers:
+        - name: server
+          {{- if eq .Values.engine "vllm" }}
+          image: {{ .Values.image.vllm }}
+          args: ["--model", {{ .Values.model | quote }}, "--tensor-parallel-size", {{ .Values.gpusPerPod | quote }}]
+          {{- else }}
+          image: {{ .Values.image.tgi }}
+          args: ["--model-id", {{ .Values.model | quote }}, "--num-shard", {{ .Values.gpusPerPod | quote }}, "--port", "8000"]
+          {{- end }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.hfTokenSecret }}, key: HF_TOKEN }
+            - name: HF_HOME
+              value: /cache
+          resources:
+            limits:
+              nvidia.com/gpu: {{ .Values.gpusPerPod }}
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          startupProbe:   # large models take minutes to load
+            httpGet: { path: /health, port: 8000 }
+            failureThreshold: 60
+            periodSeconds: 10
+          volumeMounts:
+            - { name: cache, mountPath: /cache }
+            - { name: shm, mountPath: /dev/shm }
+      volumes:
+        - name: cache
+          persistentVolumeClaim: { claimName: {{ .Release.Name }}-cache }
+        - name: shm   # tensor parallel workers share memory through /dev/shm
+          emptyDir: { medium: Memory, sizeLimit: 8Gi }
