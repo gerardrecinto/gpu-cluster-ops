@@ -2,7 +2,7 @@
 
 Run LLM inference on GPU Kubernetes nodes: size it, provision the nodes, deploy the server, alert on the GPUs.
 
-- `gpucap/plan.py`: estimates weights plus KV cache and returns the GPU count (power of two, for tensor parallelism).
+- `gpucap/plan.py`: estimates weights (at the chosen precision) plus KV cache (kept at fp16) and returns the GPU count (power of two, for tensor parallelism).
   `python -m gpucap.plan llama3-70b fp16 8192 8 a100-80` prints `150.4 GiB -> 4 x a100-80`.
 - `helm/llm-serve`: vLLM (default) or TGI on GPU nodes. Requests `nvidia.com/gpu`, tolerates the GPU taint, mounts `/dev/shm` for tensor parallel, caches weights on a PVC, has a startup probe and a PDB.
 - `terraform/`: EKS GPU managed node group with the NVIDIA AMI, a taint, and scale-to-zero.

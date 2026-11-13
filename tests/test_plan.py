@@ -22,3 +22,9 @@ def test_70b_fp16_needs_tensor_parallel_and_rounds_to_power_of_two():
 def test_smaller_gpu_needs_more():
     small = gpus_needed(MODELS["llama3-8b"], "fp16", 8192, 8, "a10g")[0]
     assert small > gpus_needed(MODELS["llama3-8b"], "fp16", 8192, 8, "h100")[0]
+
+
+def test_quantized_weights_do_not_shrink_the_kv_cache():
+    m = MODELS["llama3-70b"]
+    _, int4 = gpus_needed(m, "int4", 8192, 8, "h100")
+    assert int4 == round(weights_gib(m, "int4") + kv_cache_gib(m, "fp16", 8192, 8), 1)

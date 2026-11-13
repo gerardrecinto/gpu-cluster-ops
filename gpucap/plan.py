@@ -26,14 +26,14 @@ def weights_gib(m, dtype):
     return m.params_b * 1e9 * BYTES[dtype] / GIB
 
 
-def kv_cache_gib(m, dtype, context, seqs):
-    per_token = 2 * m.layers * m.kv_heads * m.head_dim * BYTES[dtype]  # K and V
+def kv_cache_gib(m, kv_dtype, context, seqs):
+    per_token = 2 * m.layers * m.kv_heads * m.head_dim * BYTES[kv_dtype]  # K and V
     return per_token * context * seqs / GIB
 
 
-def gpus_needed(m, dtype, context, seqs, gpu, utilization=0.9):
+def gpus_needed(m, dtype, context, seqs, gpu, utilization=0.9, kv_dtype="fp16"):
     """Smallest GPU count (power of two, for tensor parallelism) whose usable memory fits."""
-    need = weights_gib(m, dtype) + kv_cache_gib(m, dtype, context, seqs)
+    need = weights_gib(m, dtype) + kv_cache_gib(m, kv_dtype, context, seqs)  # the KV cache stays fp16 even when weights are quantized
     usable = GPUS_GIB[gpu] * utilization
     n = max(1, math.ceil(need / usable))
     return 1 << (n - 1).bit_length(), round(need, 1)
